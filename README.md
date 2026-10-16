@@ -10,6 +10,8 @@ flowchart LR
     Producer --> Topic[Kafka topic: crypto-prices]
     Topic --> Consumer[Python Consumer]
     Consumer --> Detector[Threshold-based anomaly detection]
+    Detector --> Database[(SQLite)]
+    Database --> Dashboard[Streamlit dashboard]
 ```
 
 - **CoinGecko API** provides the cryptocurrency price data.
@@ -29,6 +31,9 @@ The producer and consumer connect to Kafka at `localhost:9092`. The Docker Compo
 - Calculates percentage changes between consecutive valid observations.
 - Prints an anomaly when the absolute change is strictly greater than the configured 2% threshold; otherwise, it prints the change as normal.
 - Skips prices that are non-numeric or not positive.
+- Persists price observations and anomalies, including their data source, in SQLite.
+- Displays latest prices, price history, and anomalies in a dashboard with a shared
+  source filter for All sources, CoinGecko, Manual tests, and Unknown.
 - Includes a small script that demonstrates the percentage-change calculation.
 
 The baseline exists only in consumer memory. It is lost when the consumer stops, so the first valid observation after a restart sets a new baseline instead of being compared with a persisted price.
@@ -86,6 +91,14 @@ python producer\producer.py
 
 Starting the consumer first is useful because its `auto_offset_reset="latest"` setting means a consumer group with no committed offset begins at the end of the topic. If the producer publishes before a new consumer group starts, that group will not read those earlier messages. With the consumer running first, it can receive the first price message and establish its in-memory baseline. The configured group ID is `crypto-anomaly-detector`; if that group already has a committed offset, Kafka resumes from that offset instead of applying the reset policy.
 
+The dashboard requires `streamlit`, `pandas`, and `streamlit-autorefresh` in the active Python environment. From the repository root, run:
+
+```powershell
+streamlit run dashboard.py
+```
+
+The source filter applies to latest prices, price history, and recent anomalies. All sources is selected by default; a source with no matching rows displays an empty state.
+
 To stop the processes cleanly:
 
 1. Press **Ctrl+C** in the producer terminal.
@@ -113,11 +126,10 @@ There are no automated tests for Kafka delivery, invalid input handling in the c
 - The detector compares consecutive observations; it does not use a statistical model.
 - A threshold alert indicates a price change larger than the configured percentage, not proof that the change is statistically unusual.
 - Baselines are held only in memory and are reset when the consumer restarts.
-- Historical observations and anomaly events are not persisted.
-- Anomalies and normal changes are printed to the console; there is no dashboard or alert-delivery system.
+- The dashboard is read-only and does not deliver alerts.
 - Robust Kafka retry and reconnection behavior, along with automated integration tests, may need further work.
 
-Potential future work includes persistence, more robust failure handling, integration tests, dashboards, and alert delivery.
+Potential future work includes more robust failure handling, integration tests, and alert delivery.
 
 ## Project structure
 
@@ -126,6 +138,8 @@ Potential future work includes persistence, more robust failure handling, integr
 ├── consumer/
 │   ├── consumer.py
 │   └── test_detector.py
+├── data/
+├── dashboard.py
 ├── docker/
 │   └── docker-compose.yml
 ├── producer/
