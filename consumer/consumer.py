@@ -29,6 +29,7 @@ print("Monitoring crypto prices... Press Ctrl+C to stop.")
 try:
     for message in consumer:
         event = message.value
+        source = event.get("source", "unknown")
         prices = event.get("data", {})
 
         for coin, currencies in prices.items():
@@ -64,6 +65,7 @@ try:
                         new_price,
                         change_percent,
                         THRESHOLD_PERCENT,
+                        source,
                     )
                 else:
                     print(
@@ -72,7 +74,7 @@ try:
                     )
 
             # Save every valid observation, including the first baseline.
-            save_price_observation(coin, new_price, change_percent)
+            save_price_observation(coin, new_price, change_percent, source)
 
             # Update the baseline for the next observation.
             previous_prices[coin] = new_price

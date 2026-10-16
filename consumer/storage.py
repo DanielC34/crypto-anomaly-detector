@@ -28,6 +28,22 @@ def initialize_database():
             )
         """)
 
+        columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(price_observations)"
+            ).fetchall()
+        }
+
+        if "source" not in columns:
+            connection.execute(
+                """
+                ALTER TABLE price_observations
+                ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'
+                """
+            )
+
+
         connection.execute("""
             CREATE TABLE IF NOT EXISTS anomalies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,20 +56,36 @@ def initialize_database():
             )
         """)
 
+        anomaly_columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(anomalies)"
+            ).fetchall()
+        }
 
-def save_price_observation(coin, price_usd, change_percent=None):
+        if "source" not in anomaly_columns:
+            connection.execute(
+                """
+                ALTER TABLE anomalies
+                ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'
+                """
+            )
+
+
+
+def save_price_observation(coin, price_usd, change_percent=None, source="unknown"):
     """Save one observed price and its percentage change, if available."""
     timestamp = datetime.now(timezone.utc).isoformat()
 
     with get_connection() as connection:
         connection.execute(
-            """
-            INSERT INTO price_observations
-                (timestamp_utc, coin, price_usd, change_percent)
-            VALUES (?, ?, ?, ?)
-            """,
-            (timestamp, coin, price_usd, change_percent),
-        )
+    """
+    INSERT INTO price_observations
+        (timestamp_utc, coin, price_usd, change_percent, source)
+    VALUES (?, ?, ?, ?, ?)
+    """,
+    (timestamp, coin, price_usd, change_percent, source),
+)
 
 
 def save_anomaly(
@@ -62,6 +94,7 @@ def save_anomaly(
     new_price_usd,
     change_percent,
     threshold_percent,
+    source="unknown",
 ):
     """Save a detected anomaly."""
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -75,7 +108,8 @@ def save_anomaly(
                 previous_price_usd,
                 new_price_usd,
                 change_percent,
-                threshold_percent
+                threshold_percent,
+                source
             )
             VALUES (?, ?, ?, ?, ?, ?)
             """,
@@ -86,5 +120,6 @@ def save_anomaly(
                 new_price_usd,
                 change_percent,
                 threshold_percent,
+                source
             ),
         )
