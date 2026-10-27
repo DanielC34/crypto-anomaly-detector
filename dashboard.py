@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 
 import pandas as pd
+import altair as alt
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
@@ -145,12 +146,79 @@ else:
         history["timestamp_utc"], utc=True
     ).dt.tz_convert("Africa/Lusaka")
 
-    st.line_chart(
-        history,
-        x="timestamp_utc",
-        y="price_usd",
-        color="coin",
-    )
+    preferred_order = ["bitcoin", "ethereum", "solana"]
+
+    chart_titles = {
+        "bitcoin": "Bitcoin (BTC) — USD",
+        "ethereum": "Ethereum (ETH) — USD",
+        "solana": "Solana (SOL) — USD",
+    }
+
+    for coin in preferred_order:
+        coin_history = history[history["coin"] == coin]
+
+        st.markdown(f"**{chart_titles[coin]}**")
+
+        if coin_history.empty:
+            st.info(
+                f"No price history available for {chart_titles[coin]}."
+            )
+            continue
+
+        chart = (
+            alt.Chart(coin_history)
+            .mark_line()
+            .encode(
+                x=alt.X(
+                    "timestamp_utc:T",
+                    title="Date",
+                    axis=alt.Axis(
+                        format="%b %d",
+                        tickCount=5,
+                        labelAngle=0,
+                    ),
+                ),
+                y=alt.Y(
+                    "price_usd:Q",
+                    title="Price (USD)",
+                    scale=alt.Scale(zero=False),
+                    axis=alt.Axis(format=",.2f"),
+                ),
+                tooltip=[
+                    alt.Tooltip(
+                        "timestamp_utc:T",
+                        title="Timestamp (Lusaka time)",
+                        format="%a, %d %b %Y, %H:%M:%S",
+                    ),
+                    alt.Tooltip(
+                        "price_usd:Q",
+                        title="Price (USD)",
+                        format=",.2f",
+                    ),
+                ],
+            )
+            .properties(height=250)
+            + alt.Chart(coin_history)
+            .mark_circle(size=30)
+            .encode(
+                x=alt.X("timestamp_utc:T"),
+                y=alt.Y("price_usd:Q"),
+                tooltip=[
+                    alt.Tooltip(
+                        "timestamp_utc:T",
+                        title="Timestamp (Lusaka time)",
+                        format="%a, %d %b %Y, %H:%M:%S",
+                    ),
+                    alt.Tooltip(
+                        "price_usd:Q",
+                        title="Price (USD)",
+                        format=",.2f",
+                    ),
+                ],
+            )
+        )
+
+        st.altair_chart(chart, use_container_width=True)
 
 
 st.divider()
