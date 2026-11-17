@@ -1,7 +1,14 @@
 **/venv/
+**/.venv/
+**/env/
 **/__pycache__/
+*.py[cod]
 .env
+.env.*
+!.env.example
 data/*.db
+*.sqlite
+*.sqlite3
 
 # Local editor data
 .refact/
