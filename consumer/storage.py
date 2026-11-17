@@ -111,7 +111,7 @@ def save_anomaly(
                 threshold_percent,
                 source
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 timestamp,
