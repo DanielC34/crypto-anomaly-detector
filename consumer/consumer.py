@@ -1,14 +1,17 @@
 
 import json
 from kafka import KafkaConsumer
+from detector import (
+    THRESHOLD_PERCENT,
+    calculate_change,
+    is_anomaly,
+)
 
 from storage import (
     initialize_database,
     save_anomaly,
     save_price_observation,
 )
-
-THRESHOLD_PERCENT = 2.0
 
 # Remember the most recent price for each cryptocurrency.
 previous_prices = {}
@@ -48,17 +51,14 @@ try:
             if previous_price is None:
                 print(f"Baseline set: {coin} = ${new_price:,.2f}")
             else:
-                change_percent = (
-                    (new_price - previous_price) / previous_price
-                ) * 100
+                change_percent = calculate_change(previous_price, new_price)
 
-                if abs(change_percent) > THRESHOLD_PERCENT:
+                if is_anomaly(change_percent):
                     print(
                         f"ANOMALY: {coin} changed by "
                         f"{change_percent:+.2f}% "
                         f"(${previous_price:,.2f} -> ${new_price:,.2f})"
-                    )
-
+                        )
                     save_anomaly(
                         coin,
                         previous_price,
